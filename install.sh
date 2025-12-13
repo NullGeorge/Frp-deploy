@@ -148,7 +148,8 @@ EOF"
   run "systemctl enable frps"
   run "systemctl restart frps"
 
-  SERVER_IP=$( (curl -fsSL ifconfig.co || wget -qO- ifconfig.co) 2>/dev/null || echo "UNKNOWN")
+  SERVER_IP=$(curl -4 -fsSL ifconfig.co 2>/dev/null || wget -4 -qO- ifconfig.co 2>/dev/null || echo "UNKNOWN")
+
 
   cat <<EOF
 
