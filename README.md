@@ -11,21 +11,19 @@ curl -fsSL https://raw.githubusercontent.com/ORG/REPO/main/install.sh | bash -s 
 
 ### С указанием токена и портов
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ORG/REPO/main/install.sh | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/main/install.sh | bash -s -- \
   --token=MY_TOKEN \
-  --bind-port=7000 \
-  --yes
+  --bind-port=7000 
 ```
 
 ### Через bash <(curl ...)
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ORG/REPO/main/install.sh) --yes
+bash <(curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/main/install.sh) --yes
 ```
 
 ## Опции
 - `--token` — auth token (если не указан, генерируется)
 - `--bind-port` — порт сервера
-- `--yes` — non-interactive
 - `--dry-run` — показать действия без выполнения
 
 ## Пути
