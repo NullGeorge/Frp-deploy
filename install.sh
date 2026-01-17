@@ -151,6 +151,7 @@ install_menu() {
   echo -e "  ${GREEN}1)${NC} Install FRP Server only"
   echo -e "  ${GREEN}2)${NC} Install FRP Client only"
   echo -e "  ${GREEN}3)${NC} Install both Server and Client"
+  echo -e "  ${GREEN}4)${NC} Quick install (both, no autostart)"
   echo -e "  ${RED}0)${NC} Back to main menu"
   echo -e "─────────────────────────────────────────────────────────────"
   echo -n "Select option: "
@@ -161,6 +162,22 @@ install_menu() {
     1) INSTALL_SERVER=1; INSTALL_CLIENT=0; configure_and_install ;;
     2) INSTALL_SERVER=0; INSTALL_CLIENT=1; configure_and_install ;;
     3) INSTALL_SERVER=1; INSTALL_CLIENT=1; configure_and_install ;;
+    4) 
+      INSTALL_SERVER=1
+      INSTALL_CLIENT=1
+      # Генерируем токен
+      need_cmd openssl
+      TOKEN=$(openssl rand -hex 16)
+      # Устанавливаем без автозапуска
+      YES=0
+      install_frp
+      echo
+      echo -e "${GREEN}Installation completed!${NC}"
+      echo -e "${YELLOW}Both components installed but not started.${NC}"
+      echo -e "Use 'Manage components' menu to start services."
+      echo "Press Enter to continue..."
+      read -r
+      ;;
     0) return ;;
     *) echo -e "${RED}Invalid option${NC}"; sleep 1; install_menu ;;
   esac
@@ -271,6 +288,13 @@ install_frp() {
   run "$DL $URL > frp.tar.gz"
   run "tar -xzf frp.tar.gz"
   
+  # Флаг для отслеживания нужно ли запускать сервисы
+  local AUTO_START=1
+  if [[ "$YES" -ne 1 ]]; then
+    # В интерактивном режиме не запускаем автоматически
+    AUTO_START=0
+  fi
+  
   if [[ "$INSTALL_SERVER" -eq 1 ]]; then
     log "Installing FRP Server..."
     run "cp frp_${LATEST#v}_${ARCH}/frps $BIN_DIR/"
@@ -301,12 +325,17 @@ WantedBy=multi-user.target
 EOF"
     
     run "systemctl daemon-reload"
-    run "systemctl enable frps"
-    run "systemctl restart frps"
+    
+    if [[ "$AUTO_START" -eq 1 ]]; then
+      run "systemctl enable frps"
+      run "systemctl restart frps"
+      log "FRP Server installed and started"
+    else
+      log "FRP Server installed (not started)"
+    fi
     
     SERVER_IP=$(curl -4 -fsSL ifconfig.co 2>/dev/null || echo "UNKNOWN")
     
-    log "FRP Server installed and started"
     echo
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     echo -e "${BOLD}FRP Server Configuration:${NC}"
@@ -315,6 +344,10 @@ EOF"
     echo -e "  Bind port:    ${CYAN}$BIND_PORT${NC}"
     echo -e "  QUIC port:    ${CYAN}$QUIC_PORT${NC}"
     echo -e "  Auth token:   ${YELLOW}$TOKEN${NC}"
+    if [[ "$AUTO_START" -eq 0 ]]; then
+      echo -e "  Status:       ${YELLOW}Installed but not started${NC}"
+      echo -e "  Start with:   ${CYAN}systemctl start frps${NC}"
+    fi
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
   fi
   
@@ -323,7 +356,9 @@ EOF"
     run "cp frp_${LATEST#v}_${ARCH}/frpc $BIN_DIR/"
     run "chmod +x $BIN_DIR/frpc"
     
-    run "cat > $CONF_DIR/frpc.toml <<EOF
+    # Только создаем конфиг если есть server-addr
+    if [[ -n "$SERVER_ADDR" ]]; then
+      run "cat > $CONF_DIR/frpc.toml <<EOF
 serverAddr = \"$SERVER_ADDR\"
 serverPort = $BIND_PORT
 auth.method = \"token\"
@@ -336,6 +371,7 @@ localIP = \"127.0.0.1\"
 localPort = 22
 remotePort = 6000
 EOF"
+    fi
     
     run "cat > $SYSTEMD_DIR/frpc@.service <<'EOF'
 [Unit]
@@ -356,13 +392,21 @@ EOF"
     
     run "systemctl daemon-reload"
     
-    log "FRP Client installed"
+    log "FRP Client installed (not started)"
     echo
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     echo -e "${BOLD}FRP Client Configuration:${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
-    echo -e "  Config file:  ${CYAN}$CONF_DIR/frpc.toml${NC}"
-    echo -e "  Start with:   ${YELLOW}systemctl start frpc@frpc${NC}"
+    if [[ -n "$SERVER_ADDR" ]]; then
+      echo -e "  Config file:  ${CYAN}$CONF_DIR/frpc.toml${NC}"
+      echo -e "  Server:       ${CYAN}$SERVER_ADDR:$BIND_PORT${NC}"
+      echo -e "  Status:       ${YELLOW}Installed but not started${NC}"
+      echo -e "  Start with:   ${CYAN}systemctl start frpc@frpc${NC}"
+    else
+      echo -e "  Binary:       ${CYAN}$BIN_DIR/frpc${NC}"
+      echo -e "  Status:       ${YELLOW}Installed (configure manually)${NC}"
+      echo -e "  Config:       ${CYAN}Create $CONF_DIR/frpc.toml${NC}"
+    fi
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
   fi
   
@@ -659,15 +703,57 @@ if [[ "$YES" -eq 1 && "$ACTION" == "menu" && ($INSTALL_SERVER -eq 1 || $INSTALL_
   ACTION="install"
 fi
 
+# Если запущено без параметров (только через curl/wget), показываем меню
+if [[ "$ACTION" == "menu" && $# -eq 0 ]]; then
+  cat <<'WELCOME'
+
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║  Welcome to FRP Installer!                                ║
+║                                                            ║
+║  You can use this script in two ways:                     ║
+║                                                            ║
+║  1. Interactive TUI Menu (launching now...)               ║
+║  2. Automated CLI mode with parameters                    ║
+║                                                            ║
+║  For automated installation examples:                     ║
+║  --server --yes          (install server)                 ║
+║  --client --server-addr IP --token TOKEN --yes            ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+WELCOME
+  sleep 2
+  
+  # Проверяем, запущен ли скрипт через pipe
+  if [ ! -t 0 ]; then
+    echo -e "${YELLOW}Note: Script is running via pipe (curl/wget).${NC}"
+    echo -e "${YELLOW}For interactive menu, please download and run directly:${NC}"
+    echo ""
+    echo -e "  ${CYAN}curl -fsSL https://raw.githubusercontent.com/.../install.sh -o frp-installer.sh${NC}"
+    echo -e "  ${CYAN}chmod +x frp-installer.sh${NC}"
+    echo -e "  ${CYAN}sudo ./frp-installer.sh${NC}"
+    echo ""
+    echo -e "${YELLOW}Or use automated mode:${NC}"
+    echo -e "  ${CYAN}curl -fsSL https://... | sudo bash -s -- install --server --yes${NC}"
+    echo ""
+    exit 0
+  fi
+fi
+
 case "$ACTION" in
   menu) main_menu ;;
   install) 
     if [[ $INSTALL_SERVER -eq 0 && $INSTALL_CLIENT -eq 0 ]]; then
       echo "ERROR: Please specify --server and/or --client"
+      echo ""
       echo "Examples:"
-      echo "  Install server: $0 install --server --yes"
-      echo "  Install client: $0 install --client --server-addr 1.2.3.4 --token TOKEN --yes"
-      echo "  Install both:   $0 install --server --client --yes"
+      echo "  Install server: curl -fsSL https://... | sudo bash -s -- install --server --yes"
+      echo "  Install client: curl -fsSL https://... | sudo bash -s -- install --client --server-addr 1.2.3.4 --token TOKEN --yes"
+      echo "  Install both:   curl -fsSL https://... | sudo bash -s -- install --server --client --yes"
+      echo ""
+      echo "Or run without parameters for interactive menu:"
+      echo "  curl -fsSL https://... | sudo bash"
       exit 1
     fi
     configure_and_install

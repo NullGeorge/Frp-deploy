@@ -59,7 +59,9 @@ curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/ma
 curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/main/install.sh | sudo bash -s -- install --client --server-addr YOUR_SERVER_IP --token YOUR_TOKEN --yes
 ```
 
-#### Manual Installation
+#### Interactive TUI Menu
+
+For the interactive menu, download and run the script directly:
 
 ```bash
 # Download the script
@@ -71,6 +73,8 @@ chmod +x frp-installer.sh
 # Run interactive menu
 sudo ./frp-installer.sh
 ```
+
+**Note:** The interactive TUI menu requires direct execution and cannot work through pipe (`|`) due to stdin limitations.
 
 ### 📥 Installation Methods
 
@@ -364,7 +368,9 @@ curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/ma
 curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/main/install.sh | sudo bash -s -- install --client --server-addr IP_ВАШЕГО_СЕРВЕРА --token ВАШ_ТОКЕН --yes
 ```
 
-#### Ручная установка
+#### Интерактивное TUI меню
+
+Для интерактивного меню скачайте и запустите скрипт напрямую:
 
 ```bash
 # Скачать скрипт
@@ -376,6 +382,8 @@ chmod +x frp-installer.sh
 # Запустить интерактивное меню
 sudo ./frp-installer.sh
 ```
+
+**Примечание:** Интерактивное TUI меню требует прямого запуска и не может работать через pipe (`|`) из-за ограничений stdin.
 
 ### 📥 Методы установки
 
