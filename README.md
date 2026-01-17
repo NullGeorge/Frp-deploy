@@ -6,7 +6,7 @@ install.sh для установки **FRP Server**.
 
 ### Через curl (рекомендуется)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ORG/REPO/main/install.sh | bash -s -- --yes
+curl -fsSL https://raw.githubusercontent.com/NullGeorge/Frp-deploy/refs/heads/main/install.sh | bash -s -- --yes
 ```
 
 ### С указанием токена и портов
